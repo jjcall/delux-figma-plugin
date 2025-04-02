@@ -1,100 +1,103 @@
-# Wirefy - Figma Wireframe Converter Plugin
+# De-Lux ✨ - From Fancy to Framework
 
-A Figma plugin that automatically converts your detailed UI designs into clean, professional wireframes. Wirefy helps designers quickly create wireframe versions of their designs while maintaining the original layout and structure.
+Turn your polished UI designs into sleek wireframes with a sprinkle of magic! De-Lux helps designers strip away the fancy and focus on what matters - structure and flow. It's like a time machine for your designs, taking them back to their essence.
 
-## Features
+## ✨ What's Cool About It?
 
-- **One-Click Conversion**: Transform any frame into a wireframe with a single click
-- **Smart Element Detection**: Intelligently handles different types of elements:
-  - Text elements preserve their original size and position
-  - Icons are converted to a consistent style
-  - Containers maintain their structure and hierarchy
-  - Navigation elements preserve their functionality indicators
-- **Consistent Styling**:
-  - Clean, monochromatic color scheme
-  - Uniform border treatment
-  - Consistent spacing and alignment
-  - Smart handling of fills and transparencies
-- **Original Design Preservation**:
-  - Maintains layout and positioning
-  - Preserves text auto-resize behavior
-  - Keeps important structural elements
-  - Respects original opacity settings
+- **One-Click Wonder**: Zap! Your detailed design becomes a clean wireframe faster than you can say "low-fidelity"
+- **Smart Cookie Detection**: Our plugin is pretty clever about handling different elements:
+  - Text stays where it should (no wandering words here!)
+  - Icons get a minimalist makeover
+  - Containers keep their cool structure
+  - Navigation elements don't lose their way
+- **Consistent Vibes**:
+  - Clean, monochrome magic
+  - Borders that behave
+  - Spacing that makes sense
+  - Smart fill handling (because transparency is important!)
+- **Keeps the Good Stuff**:
+  - Your layout stays pixel-perfect
+  - Text knows how to resize itself (smart text is smart)
+  - Important structures stick around
+  - Respects the transparency game
 
-## Installation
+## 🚀 Get Started
 
-1. Open Figma and go to the plugins menu
-2. Search for "Wirefy" in the plugin marketplace
-3. Click "Install"
+1. Pop open Figma
+2. Hit up the plugins menu
+3. Search for "De-Lux"
+4. Smash that Install button
 
-## Usage
+## 🎮 How to Use
 
-1. Select the frame you want to convert
-2. Right-click and select Plugins > Wirefy
-3. Click "Convert to Wireframe"
-4. Your wireframe will be created as a new frame next to the original
+1. Pick the frame you want to de-luxe
+2. Right-click > Plugins > De-Lux
+3. Hit "Convert to Wireframe"
+4. Watch the magic happen! Your wireframe appears right next to the original
 
-## Development Setup
+## 🛠 Development Setup
 
 ```bash
-# Clone the repository
+# Grab the code
 git clone [repository-url]
-cd wirefy
+cd de-lux
 
-# Install dependencies
+# Get the goods
 npm install
 
-# Build the plugin
+# Build it
 npm run build
 
-# Watch for changes during development
+# Watch it grow
 npm run watch
 ```
 
-### Prerequisites
+### 📋 Prerequisites
 
 - Node.js (v14 or higher)
-- Figma desktop app for testing
-- Figma plugin development environment
+- Figma desktop app
+- Your favorite code editor
 
-## Project Structure
+## 🗂 Project Structure
 
 ```
-wirefy/
-├── src/               # Source files
-│   ├── code.ts       # Main plugin logic
-│   ├── ui.tsx        # Plugin UI components
-│   └── ui.css        # UI styles
-├── build/            # Compiled files
-├── tasks/            # Development tasks and documentation
-└── manifest.json     # Plugin manifest
+de-lux/
+├── src/               # Where the magic happens
+│   ├── code.ts       # The brain
+│   ├── ui.tsx        # The face
+│   └── ui.css        # The style
+├── build/            # The final form
+├── tasks/            # The todo list
+└── manifest.json     # The identity card
 ```
 
-## Contributing
+## 🤝 Contributing
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+Got ideas? We love ideas! Here's how to join the party:
 
-## License
+1. Fork it
+2. Create your feature branch (`git checkout -b feature/amazing-stuff`)
+3. Commit your changes (`git commit -m 'Add some amazing stuff'`)
+4. Push to the branch (`git push origin feature/amazing-stuff`)
+5. Open a Pull Request and let's chat!
+
+## 📜 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Acknowledgments
+## 👏 Shoutouts
 
-- Figma Plugin API Documentation
-- The Figma community for feedback and support
+- Figma Plugin API (you're the real MVP)
+- The awesome Figma community
 
-## Contact
+## 📫 Get in Touch
 
 Project Link: [repository-url]
 
-## Roadmap
+## 🗺 The Future is Bright
 
-- [ ] Custom wireframe styles
-- [ ] Batch processing for multiple frames
-- [ ] Annotation tools
-- [ ] Performance optimization for large files
-- [ ] Component library integration
+- [ ] Custom style presets (because one size doesn't fit all)
+- [ ] Batch processing (convert ALL the frames!)
+- [ ] Annotation tools (leave notes for your future self)
+- [ ] Speed improvements (gotta go fast!)
+- [ ] Component library magic
