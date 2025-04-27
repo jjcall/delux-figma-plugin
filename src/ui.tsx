@@ -27,7 +27,7 @@ const App = () => {
       const message = event.data.pluginMessage;
       if (message.type === 'progress') {
         setProgress({ current: message.value, total: message.total });
-      } else if (message.type === 'complete' || message.type === 'error') {
+      } else if (message.type === 'conversion-complete' || message.type === 'error') {
         setIsConverting(false);
         setProgress({ current: 0, total: 0 });
       }

@@ -21,7 +21,7 @@ const WireframeStyles = {
     border: 0.5
   },
   text: {
-    font: { family: "Inter", style: "Regular" }
+    font: { family: "Figma Hand", style: "Regular" }
   },
   radius: 4  // Default border radius for non-ellipse elements
 };
@@ -366,51 +366,35 @@ figma.ui.onmessage = async (msg: Message) => {
   if (msg.type === 'convert-to-wireframe') {
     const selection = figma.currentPage.selection;
 
-    if (selection.length !== 1) {
-      figma.notify('Please select exactly one frame to convert');
+    if (selection.length === 0) {
+      figma.notify('Please select a frame to convert');
       return;
     }
 
-    const selectedNode = selection[0];
-    if (!isFrameNode(selectedNode)) {
-      figma.notify('Please select a frame');
+    const node = selection[0];
+    if (!hasChildren(node)) {
+      figma.notify('Please select a frame or component');
       return;
     }
 
-    try {
-      // Clone the selected frame
-      const clone = selectedNode.clone();
-      clone.name = `${selectedNode.name}_Wireframe`;
+    // Load the Figma Hand font
+    await figma.loadFontAsync({ family: "Figma Hand", style: "Regular" });
 
-      // Position the clone next to the original
-      clone.x = selectedNode.x + selectedNode.width + 100;
-      clone.y = selectedNode.y;
-
-      // Initialize progress tracking
-      const totalNodes = countNodes(clone);
-      const progress = { current: 0, total: totalNodes };
-
-      // Start conversion
-      figma.notify('Starting wireframe conversion...');
-      await convertToWireframe(clone, progress);
-
-      // Signal completion to UI
-      figma.ui.postMessage({
-        type: 'complete'
-      });
-
-      // Select the new wireframe
-      figma.currentPage.selection = [clone];
-      figma.viewport.scrollAndZoomIntoView([clone]);
-
-      figma.notify('Wireframe conversion complete! ✨');
-    } catch (error) {
-      console.error('Conversion error:', error);
-      figma.notify('Error during conversion');
-      // Signal error to UI
-      figma.ui.postMessage({
-        type: 'error'
-      });
+    // Clone the selected node
+    const clone = node.clone();
+    if (!node.parent) {
+      figma.notify('Error: Node has no parent');
+      return;
     }
+    node.parent.appendChild(clone);
+    clone.x = node.x + node.width + 100;
+
+    // Convert the clone to wireframe
+    const progress = { current: 0, total: countNodes(clone) };
+    await convertToWireframe(clone, progress);
+
+    // Notify completion
+    figma.ui.postMessage({ type: 'conversion-complete' });
+    figma.notify('Wireframe conversion complete! 🎉');
   }
 };
