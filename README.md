@@ -20,12 +20,6 @@ Turn your meticulously crafted masterpieces into bare-bones wireframes with one 
   - Text knows how to resize itself (smart text is smart)
   - Important structures stick around
 
-## 🚀 Get Started
-
-1. Pop open Figma
-2. Hit up the plugins menu
-3. Search for "De-Lux"
-
 ## 🎮 How to Use
 
 1. Pick the frame you want to de-luxe
@@ -37,8 +31,8 @@ Turn your meticulously crafted masterpieces into bare-bones wireframes with one 
 
 ```bash
 # Grab the code
-git clone [repository-url]
-cd de-lux
+git clone git@github.com:jjcall/delux-figma-plugin.git
+cd delux-figma-plugin
 
 # Get the goods
 npm install
@@ -74,11 +68,8 @@ de-lux/
 This project is licensed under the MIT License - see the LICENSE file for details.
 
 
-## 📫 Get in Touch
-
-Project Link: [repository-url]
-
 ## 🗺 The Future is Bright
 
-- [ ] Custom style presets (because one size doesn't fit all)
-- [ ] Batch processing (convert ALL the frames!)
+- [ ] Custom style presets
+- [ ] Batch processing
+- [ ] Fidelity granualarity
