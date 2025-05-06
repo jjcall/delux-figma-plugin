@@ -2,11 +2,6 @@ import { h, render } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import './ui.css';
 
-interface ConversionSettings {
-  preserveColors: boolean;
-  showPlaceholders: boolean;
-}
-
 interface ProgressState {
   current: number;
   total: number;
@@ -14,12 +9,7 @@ interface ProgressState {
 
 const App = () => {
   const [isConverting, setIsConverting] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const [progress, setProgress] = useState<ProgressState>({ current: 0, total: 0 });
-  const [settings, setSettings] = useState<ConversionSettings>({
-    preserveColors: false,
-    showPlaceholders: true
-  });
 
   useEffect(() => {
     // Listen for messages from the plugin
@@ -27,109 +17,44 @@ const App = () => {
       const message = event.data.pluginMessage;
       if (message.type === 'progress') {
         setProgress({ current: message.value, total: message.total });
-      } else if (message.type === 'conversion-complete' || message.type === 'error') {
+      } else if (message.type === 'complete') {
         setIsConverting(false);
         setProgress({ current: 0, total: 0 });
       }
     };
   }, []);
 
-  const onConvertClick = () => {
+  const handleConvert = () => {
     setIsConverting(true);
-    setProgress({ current: 0, total: 0 });
-    parent.postMessage({
-      pluginMessage: {
-        type: 'convert-to-wireframe'
-      }
-    }, '*');
+    parent.postMessage({ pluginMessage: { type: 'convert' } }, '*');
   };
 
-  const toggleSettings = () => setShowSettings(!showSettings);
-
-  const progressPercentage = progress.total > 0
-    ? Math.round((progress.current / progress.total) * 100)
-    : 0;
-
   return (
-    <div class="container">
-      <header>
-        <h2>Wireframe Converter</h2>
-        <button
-          class="icon-button"
-          onClick={toggleSettings}
-          title={showSettings ? "Hide settings" : "Show settings"}
-        >
-          {showSettings ? '×' : '⚙️'}
-        </button>
-      </header>
+    <div className="container">
 
-      {showSettings ? (
-        <div class="settings-panel">
-          <label class="setting-item">
-            <input
-              type="checkbox"
-              checked={settings.preserveColors}
-              onChange={e => setSettings({
-                ...settings,
-                preserveColors: (e.target as HTMLInputElement).checked
-              })}
-            />
-            <span>Preserve some colors</span>
-          </label>
-          <label class="setting-item">
-            <input
-              type="checkbox"
-              checked={settings.showPlaceholders}
-              onChange={e => setSettings({
-                ...settings,
-                showPlaceholders: (e.target as HTMLInputElement).checked
-              })}
-            />
-            <span>Show image placeholders</span>
-          </label>
-        </div>
-      ) : (
-        <div class="instructions">
-          <p>1. Select a frame in your design</p>
-          <p>2. Click the button below to convert</p>
-          <p>3. A wireframe copy will be created</p>
-        </div>
-      )}
-
-      {isConverting && progress.total > 0 && (
-        <div class="progress-container">
-          <div class="progress-bar">
-            <div
-              class="progress-fill"
-              style={{ width: `${progressPercentage}%` }}
-            />
-          </div>
-          <div class="progress-text">
-            Processing: {progress.current} / {progress.total} nodes ({progressPercentage}%)
+      <div className="main-container">
+        <div className="info-banner">
+          <div className="info-icon"></div>
+          <div className="info-content">
+            <div className="info-title">How it works</div>
+            <div className="info-description">
+              Select a frame, click to convert, and get a wireframe copy instantly.
+            </div>
           </div>
         </div>
-      )}
+      </div>
 
-      <button
-        class={`button ${isConverting ? 'converting' : ''}`}
-        onClick={onConvertClick}
-        disabled={isConverting}
-      >
-        {isConverting ? (
-          <span class="spinner">Converting...</span>
-        ) : (
-          'Convert to Wireframe'
-        )}
-      </button>
+      <div className="divider"></div>
 
-      <footer>
+      <div className="footer">
         <button
-          class="text-button"
-          onClick={() => parent.postMessage({ pluginMessage: { type: 'help' } }, '*')}
+          className="convert-button"
+          onClick={handleConvert}
+          disabled={isConverting}
         >
-          Need help?
+          {isConverting ? `Converting ${progress.current}/${progress.total}...` : 'De-lux it'}
         </button>
-      </footer>
+      </div>
     </div>
   );
 };

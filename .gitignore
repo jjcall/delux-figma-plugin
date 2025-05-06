@@ -15,6 +15,7 @@ build/
 *.swp
 *.swo
 .DS_Store
+.cursor/
 
 # Environment variables
 .env

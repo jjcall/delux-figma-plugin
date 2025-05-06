@@ -1,18 +1,20 @@
 interface Message {
-  type: 'convert-to-wireframe' | 'help';
+  type: 'convert-to-wireframe' | 'help' | 'convert' | 'close';
 }
 
 figma.showUI(__html__, {
-  width: 320,
-  height: 360,
-  themeColors: true
+  themeColors: true,
+  width: 240,
+  height: 340,
 });
 
 // Core wireframe styles
 const WireframeStyles = {
   colors: {
     content: { r: 0.2, g: 0.2, b: 0.2 },     // Dark gray for text and icons
+    contentLight: { r: 0.95, g: 0.95, b: 0.95 }, // Light gray for text on dark backgrounds
     fill: { r: 0.9, g: 0.9, b: 0.9 },        // Light gray for fills
+    fillInverted: { r: 0.25, g: 0.25, b: 0.25 }, // Dark gray for dark backgrounds
     stroke: { r: 0.6, g: 0.6, b: 0.6 },      // Medium gray for borders
     background: { r: 1, g: 1, b: 1 }         // White for backgrounds
   },
@@ -123,6 +125,53 @@ function hasNonWhiteFills(node: SceneNode): boolean {
   return false;
 }
 
+// Calculate luminance of a color (perceived brightness)
+function getLuminance(color: RGB): number {
+  // Using the formula for relative luminance in sRGB colorspace
+  // See: https://www.w3.org/TR/WCAG20/#relativeluminancedef
+  return 0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b;
+}
+
+// Determine if a fill is dark (by calculating its luminance)
+function isDarkFill(fill: Paint): boolean {
+  if (fill.type === 'SOLID') {
+    const luminance = getLuminance(fill.color);
+    return luminance < 0.5; // 0.5 is the midpoint between black (0) and white (1)
+  }
+  return false;
+}
+
+// Helper function to get the most visible fill from a list of fills
+function getMostVisibleFill(fills: Paint[]): Paint | null {
+  if (!fills || fills.length === 0) return null;
+
+  // Filter to only visible fills
+  const visibleFills = fills.filter(fill => isEffectivelyVisible(fill));
+  if (visibleFills.length === 0) return null;
+
+  // If there's just one, return it
+  if (visibleFills.length === 1) return visibleFills[0];
+
+  // Prioritize solid fills
+  const solidFills = visibleFills.filter(fill => fill.type === 'SOLID');
+  if (solidFills.length > 0) {
+    // Return the last one as it's typically the most visible/topmost
+    return solidFills[solidFills.length - 1];
+  }
+
+  // If no solid fills, return the last visible one
+  return visibleFills[visibleFills.length - 1];
+}
+
+// Helper function to check if node has dark fill
+function hasDarkFill(node: SceneNode): boolean {
+  if ('fills' in node && node.fills) {
+    const mainFill = getMostVisibleFill(node.fills as Paint[]);
+    return mainFill ? isDarkFill(mainFill) : false;
+  }
+  return false;
+}
+
 // Core conversion functions
 async function convertToWireframe(node: SceneNode, progress: { current: number, total: number }) {
   try {
@@ -162,12 +211,19 @@ async function convertText(node: TextNode) {
   const originalTextAutoResize = node.textAutoResize;
   const originalHeight = node.height;
 
+  // Check if the parent has a dark fill - this would indicate light text on dark background
+  const parentIsDark = node.parent && 'fills' in node.parent && hasDarkFill(node.parent);
+
   // Load and apply font
   await figma.loadFontAsync(WireframeStyles.text.font);
   node.fontName = WireframeStyles.text.font;
 
   // Apply wireframe styles while preserving key properties
-  node.fills = [{ type: 'SOLID', color: WireframeStyles.colors.content }];
+  // Use light text color if parent is dark, otherwise use dark text color
+  node.fills = [{
+    type: 'SOLID',
+    color: parentIsDark ? WireframeStyles.colors.contentLight : WireframeStyles.colors.content
+  }];
 
   // Restore original properties
   if (originalSize) {
@@ -199,6 +255,9 @@ function convertShape(node: RectangleNode | EllipseNode | PolygonNode) {
   const originalWidth = node.width;
   const originalHeight = node.height;
 
+  // Determine if this is a dark element
+  const isDark = hasDarkFill(node);
+
   // Apply wireframe styles
   if ('fills' in node) {
     const fills = node.fills as Paint[];
@@ -211,7 +270,11 @@ function convertShape(node: RectangleNode | EllipseNode | PolygonNode) {
     else if (!hasNonWhiteFills(node)) {
       node.fills = [{ type: 'SOLID', color: WireframeStyles.colors.background }];
     }
-    // If it has any visible non-white fills, convert to wireframe fill
+    // If it has dark fills originally, keep it dark in wireframe
+    else if (isDark) {
+      node.fills = [{ type: 'SOLID', color: WireframeStyles.colors.fillInverted }];
+    }
+    // Otherwise, use the standard light fill for wireframe
     else {
       node.fills = [{ type: 'SOLID', color: WireframeStyles.colors.fill }];
     }
@@ -247,22 +310,35 @@ function convertShape(node: RectangleNode | EllipseNode | PolygonNode) {
 function convertVector(node: VectorNode) {
   if ('fills' in node) {
     const fills = node.fills as Paint[];
+    // Determine if this is a dark element
+    const isDark = hasDarkFill(node);
+
+    // Determine if the parent has a dark fill
+    const parentIsDark = node.parent && 'fills' in node.parent && hasDarkFill(node.parent);
 
     // If all fills are hidden or there are no fills, keep it transparent
     if (!hasVisibleFills(fills)) {
       node.fills = [];
     }
-    // If it's part of a button or icon, use content color regardless of original fill
+    // If it's part of a button or icon, use appropriate content color
     else if (node.parent && (
       node.parent.name.toLowerCase().includes('button') ||
       node.parent.name.toLowerCase().includes('icon') ||
       node.name.toLowerCase().includes('icon')
     )) {
-      node.fills = [{ type: 'SOLID', color: WireframeStyles.colors.content }];
+      // Use light content color if parent is dark
+      node.fills = [{
+        type: 'SOLID',
+        color: parentIsDark ? WireframeStyles.colors.contentLight : WireframeStyles.colors.content
+      }];
     }
     // For other vectors, preserve white fills
     else if (!hasNonWhiteFills(node)) {
       node.fills = [{ type: 'SOLID', color: WireframeStyles.colors.background }];
+    }
+    // For vectors with dark fills, keep them dark
+    else if (isDark) {
+      node.fills = [{ type: 'SOLID', color: WireframeStyles.colors.fillInverted }];
     }
     // For all other cases, use content color
     else {
@@ -277,6 +353,12 @@ function convertVector(node: VectorNode) {
 }
 
 async function convertContainer(node: FrameNode | ComponentNode | InstanceNode, progress: { current: number, total: number }) {
+  // Determine if this is a dark container
+  const isDark = 'backgrounds' in node ?
+    (getMostVisibleFill(node.backgrounds as Paint[]) ?
+      isDarkFill(getMostVisibleFill(node.backgrounds as Paint[])!) : false) :
+    false;
+
   // Handle container-specific properties
   if ('backgrounds' in node) {
     const backgrounds = node.backgrounds as Paint[];
@@ -292,6 +374,10 @@ async function convertContainer(node: FrameNode | ComponentNode | InstanceNode, 
     // If it has visible backgrounds but they're all white, keep it white
     else if (!hasNonWhiteFills(node)) {
       node.backgrounds = [{ type: 'SOLID', color: WireframeStyles.colors.background }];
+    }
+    // If it has dark backgrounds originally, keep it dark in wireframe
+    else if (isDark) {
+      node.backgrounds = [{ type: 'SOLID', color: WireframeStyles.colors.fillInverted }];
     }
     // If it has any visible non-white backgrounds, convert to wireframe fill
     else {
@@ -357,44 +443,105 @@ function showHelp() {
 }
 
 // Main message handler
-figma.ui.onmessage = async (msg: Message) => {
+figma.ui.onmessage = async msg => {
   if (msg.type === 'help') {
     showHelp();
     return;
   }
 
-  if (msg.type === 'convert-to-wireframe') {
+  if (msg.type === 'close') {
+    figma.closePlugin();
+    return;
+  }
+
+  if (msg.type === 'convert') {
     const selection = figma.currentPage.selection;
 
     if (selection.length === 0) {
-      figma.notify('Please select a frame to convert');
-      return;
-    }
-
-    const node = selection[0];
-    if (!hasChildren(node)) {
-      figma.notify('Please select a frame or component');
+      figma.notify('Please select at least one node to convert.');
+      figma.ui.postMessage({ type: 'complete' });
       return;
     }
 
     // Load the Figma Hand font
     await figma.loadFontAsync({ family: "Figma Hand", style: "Regular" });
 
-    // Clone the selected node
-    const clone = node.clone();
-    if (!node.parent) {
-      figma.notify('Error: Node has no parent');
-      return;
+    // Clone the selection and convert to wireframe
+    let totalNodes = 0;
+    let processedNodes = 0;
+
+    // Count total nodes first
+    selection.forEach(node => {
+      totalNodes += countDescendants(node);
+    });
+
+    figma.ui.postMessage({
+      type: 'progress',
+      value: processedNodes,
+      total: totalNodes
+    });
+
+    // Process each node
+    for (const node of selection) {
+      if ('clone' in node) {
+        const clone = node.clone();
+        // Position the wireframe to the right of the original
+        clone.x = node.x + node.width + 100;
+
+        // Begin the wireframe conversion process
+        await processNode(clone, processedNodes, totalNodes);
+
+        figma.currentPage.selection = [clone];
+        figma.viewport.scrollAndZoomIntoView([clone]);
+      } else {
+        figma.notify('Selected node cannot be cloned');
+      }
     }
-    node.parent.appendChild(clone);
-    clone.x = node.x + node.width + 100;
 
-    // Convert the clone to wireframe
-    const progress = { current: 0, total: countNodes(clone) };
-    await convertToWireframe(clone, progress);
-
-    // Notify completion
-    figma.ui.postMessage({ type: 'conversion-complete' });
-    figma.notify('Wireframe conversion complete! 🎉');
+    figma.notify('Wireframe conversion complete! ✅');
+    figma.ui.postMessage({ type: 'complete' });
   }
 };
+
+// Helper to count total nodes for progress tracking
+function countDescendants(node: BaseNode): number {
+  let count = 1; // Count the node itself
+
+  if ('children' in node) {
+    const parent = node as ChildrenMixin;
+    for (const child of parent.children) {
+      count += countDescendants(child);
+    }
+  }
+
+  return count;
+}
+
+// Process node and update progress
+async function processNode(node: SceneNode, processed: number, total: number) {
+  processed++;
+
+  // Update progress every 10 nodes to reduce UI updates
+  if (processed % 10 === 0 || processed === total) {
+    figma.ui.postMessage({
+      type: 'progress',
+      value: processed,
+      total: total
+    });
+  }
+
+  // Start the conversion process
+  const progress = { current: processed, total: total };
+  await convertToWireframe(node, progress);
+
+  // Process children if any
+  if ('children' in node) {
+    for (const child of (node as ChildrenMixin).children) {
+      if ('id' in child) { // Ensure it's a SceneNode
+        await processNode(child as SceneNode, processed, total);
+      }
+    }
+  }
+
+  return processed;
+}

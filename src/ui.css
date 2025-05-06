@@ -1,183 +1,242 @@
+/*
+  De-Lux Wireframe Converter Plugin
+  Using Figma Design Tokens for theming
+*/
+
 body {
-  font-family: Inter, sans-serif;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   margin: 0;
-  padding: 16px;
+  font-size: 11px;
+  line-height: 1.45;
   color: var(--figma-color-text);
   background: var(--figma-color-bg);
 }
 
+
 .container {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  min-height: 200px;
 }
 
-header {
+/* Main body content */
+.main-container {
   display: flex;
+  flex-direction:  column;
+  gap: 12px;
+  align-items: left;
+  padding: 12px;
+}
+
+/* Header */
+.header {
+  display: flex;
+  flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  width: 100%;
+  padding: 8px 12px;
+}
+
+.logo-title {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo-icon {
+  position: relative;
+  width: 16px;
+  height: 16px;
+}
+
+.icon-shape {
+  position: absolute;
+  border: 0.22px solid #00954D;
+}
+
+.rectangle {
+  top: 0;
+  left: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 2.63px;
+}
+
+.oval1, .oval2, .oval3 {
+  border-radius: 109px;
+}
+
+.oval1 {
+  width: 8px;
+  height: 8px;
+  top: 3px;
+  left: 3px;
+}
+
+.oval2 {
+  width: 6px;
+  height: 6px;
+  top: 4px;
+  left: 4px;
+}
+
+.oval3 {
+  width: 4px;
+  height: 4px;
+  top: 5px;
+  left: 5px;
+}
+
+.grid {
+  width: 14px;
+  height: 14px;
+  top: 0;
+  left: 0;
+  border: 0.11px solid #00954D;
+}
+
+.line {
+  width: 14px;
+  height: 1px;
+  top: 7px;
+  left: 0;
+  border-top: 0.11px solid #000000;
+}
+
+.close-button {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.close-icon {
+  width: 10px;
+  height: 10px;
+  position: relative;
+}
+
+.close-icon:before, .close-icon:after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 1px;
+  background-color: var(--figma-color-text);
+  top: 50%;
+  left: 0;
+}
+
+.close-icon:before {
+  transform: rotate(45deg);
+}
+
+.close-icon:after {
+  transform: rotate(-45deg);
 }
 
 h2 {
   margin: 0;
-  font-size: 14px;
   font-weight: 600;
+  font-size: 11px;
   color: var(--figma-color-text);
 }
 
-p {
-  margin: 0;
-  font-size: 12px;
-  color: var(--figma-color-text-secondary);
-}
-
-.instructions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  background: var(--figma-color-bg-secondary);
-  border-radius: 6px;
-}
-
-.settings-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 12px;
-  background: var(--figma-color-bg-secondary);
-  border-radius: 6px;
-}
-
-.setting-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--figma-color-text);
-  cursor: pointer;
-}
-
-.setting-item input[type="checkbox"] {
-  margin: 0;
-  cursor: pointer;
-}
-
-.button {
-  background: var(--figma-color-bg-brand);
-  color: var(--figma-color-text-onbrand);
-  border: none;
-  border-radius: 6px;
-  padding: 8px 16px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
+/* Divider */
+.divider {
+  height: 1px;
+  background-color: var(--figma-color-border);
   width: 100%;
+}
+
+/* Info Banner */
+.info-banner {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 16px 12px;
+  background-color: var(--figma-color-bg-brand-tertiary);
+  border-radius: 6px;
+}
+
+.info-icon {
+  width: 16px;
+  height: 16px;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
-.button:hover {
-  background: var(--figma-color-bg-brand-hover);
-}
-
-.button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.button.converting {
-  background: var(--figma-color-bg-disabled);
-}
-
-.spinner {
-  display: inline-flex;
-  align-items: center;
-}
-
-.spinner::before {
-  content: '';
-  width: 12px;
-  height: 12px;
-  margin-right: 8px;
-  border: 2px solid var(--figma-color-icon-onbrand);
-  border-top-color: transparent;
+.info-icon:before {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background-color: transparent;
   border-radius: 50%;
-  animation: spin 0.6s linear infinite;
+  border: 1px solid var(--figma-color-text);
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+.info-icon:after {
+  content: "i";
+  font-size: 10px;
+  font-weight: bold;
+  color: var(--figma-color-text);
 }
 
-.icon-button {
-  background: none;
-  border: none;
-  padding: 4px;
-  cursor: pointer;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--figma-color-text-secondary);
-}
-
-.icon-button:hover {
-  background: var(--figma-color-bg-hover);
-}
-
-.text-button {
-  background: none;
-  border: none;
-  padding: 4px 8px;
-  font-size: 12px;
-  color: var(--figma-color-text-brand);
-  cursor: pointer;
-  border-radius: 4px;
-}
-
-.text-button:hover {
-  background: var(--figma-color-bg-hover);
-}
-
-footer {
-  margin-top: auto;
-  display: flex;
-  justify-content: center;
-}
-
-.progress-container {
+.info-content {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  background: var(--figma-color-bg-secondary);
-  border-radius: 6px;
+  flex: 1;
+  gap: 4px;
 }
 
-.progress-bar {
-  width: 100%;
-  height: 4px;
-  background: var(--figma-color-bg-disabled);
-  border-radius: 2px;
-  overflow: hidden;
+.info-title {
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--figma-color-text);
 }
 
-.progress-fill {
-  height: 100%;
-  background: var(--figma-color-bg-brand);
-  transition: width 0.3s ease;
-}
-
-.progress-text {
+.info-description {
+  font-weight: 400;
   font-size: 11px;
   color: var(--figma-color-text-secondary);
-  text-align: center;
+}
+
+/* Footer */
+.footer {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 12px;
+}
+
+.convert-button {
+  background-color: var(--figma-color-bg-brand);
+  color: var(--figma-color-text-onbrand);
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 11px;
+  padding: 0 16px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.convert-button:hover {
+  background-color: var(--figma-color-bg-brand-hover);
+}
+
+.convert-button:disabled {
+  background-color: var(--figma-color-bg-disabled);
+  color: var(--figma-color-text-disabled);
+  cursor: not-allowed;
 }
