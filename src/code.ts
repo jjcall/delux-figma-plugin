@@ -1,11 +1,12 @@
 interface Message {
   type: 'convert-to-wireframe' | 'help' | 'convert' | 'close';
+  fontChoice?: 'handwritten' | 'sans-serif' | 'serif';
 }
 
 figma.showUI(__html__, {
   themeColors: true,
   width: 240,
-  height: 340,
+  height: 370,
 });
 
 // Core wireframe styles
@@ -27,6 +28,15 @@ const WireframeStyles = {
   },
   radius: 4  // Default border radius for non-ellipse elements
 };
+
+// Font mapping
+const fontMapping = {
+  'handwritten': { family: "Figma Hand", style: "Regular" },
+  'sans-serif': { family: "Helvetica", style: "Regular" },
+  'serif': { family: "Times New Roman", style: "Regular" }
+} as const;
+
+type FontOption = keyof typeof fontMapping;
 
 // Type guards for node types
 function isFrameNode(node: SceneNode): node is FrameNode {
@@ -173,7 +183,7 @@ function hasDarkFill(node: SceneNode): boolean {
 }
 
 // Core conversion functions
-async function convertToWireframe(node: SceneNode, progress: { current: number, total: number }) {
+async function convertToWireframe(node: SceneNode, progress: { current: number, total: number }, fontChoice: FontName) {
   try {
     // Update progress
     progress.current++;
@@ -185,7 +195,7 @@ async function convertToWireframe(node: SceneNode, progress: { current: number, 
 
     // Process based on node type
     if (isTextNode(node)) {
-      await convertText(node);
+      await convertText(node, fontChoice);
     }
     else if (isShapeNode(node)) {
       convertShape(node);
@@ -194,7 +204,7 @@ async function convertToWireframe(node: SceneNode, progress: { current: number, 
       convertVector(node);
     }
     else if (hasChildren(node)) {
-      await convertContainer(node, progress);
+      await convertContainer(node, progress, fontChoice);
     }
 
   } catch (error) {
@@ -202,7 +212,7 @@ async function convertToWireframe(node: SceneNode, progress: { current: number, 
   }
 }
 
-async function convertText(node: TextNode) {
+async function convertText(node: TextNode, fontChoice: FontName) {
   // Save original properties we want to preserve
   const originalSize = node.fontSize;
   const originalWidth = node.width;
@@ -215,8 +225,8 @@ async function convertText(node: TextNode) {
   const parentIsDark = node.parent && 'fills' in node.parent && hasDarkFill(node.parent);
 
   // Load and apply font
-  await figma.loadFontAsync(WireframeStyles.text.font);
-  node.fontName = WireframeStyles.text.font;
+  await figma.loadFontAsync(fontChoice);
+  node.fontName = fontChoice;
 
   // Apply wireframe styles while preserving key properties
   // Use light text color if parent is dark, otherwise use dark text color
@@ -352,7 +362,7 @@ function convertVector(node: VectorNode) {
   }
 }
 
-async function convertContainer(node: FrameNode | ComponentNode | InstanceNode, progress: { current: number, total: number }) {
+async function convertContainer(node: FrameNode | ComponentNode | InstanceNode, progress: { current: number, total: number }, fontChoice: FontName) {
   // Determine if this is a dark container
   const isDark = 'backgrounds' in node ?
     (getMostVisibleFill(node.backgrounds as Paint[]) ?
@@ -410,7 +420,7 @@ async function convertContainer(node: FrameNode | ComponentNode | InstanceNode, 
 
   // Process all children
   for (const child of node.children) {
-    await convertToWireframe(child, progress);
+    await convertToWireframe(child, progress, fontChoice);
   }
 }
 
@@ -443,7 +453,7 @@ function showHelp() {
 }
 
 // Main message handler
-figma.ui.onmessage = async msg => {
+figma.ui.onmessage = async (msg: Message) => {
   if (msg.type === 'help') {
     showHelp();
     return;
@@ -463,8 +473,12 @@ figma.ui.onmessage = async msg => {
       return;
     }
 
-    // Load the Figma Hand font
-    await figma.loadFontAsync({ family: "Figma Hand", style: "Regular" });
+    // Get selected font from UI or use default
+    const fontOption = msg.fontChoice || 'handwritten' as FontOption;
+    const fontChoice = fontMapping[fontOption];
+
+    // Load the selected font
+    await figma.loadFontAsync(fontChoice);
 
     // Clone the selection and convert to wireframe
     let totalNodes = 0;
@@ -489,7 +503,7 @@ figma.ui.onmessage = async msg => {
         clone.x = node.x + node.width + 100;
 
         // Begin the wireframe conversion process
-        await processNode(clone, processedNodes, totalNodes);
+        await processNode(clone, processedNodes, totalNodes, fontChoice);
 
         figma.currentPage.selection = [clone];
         figma.viewport.scrollAndZoomIntoView([clone]);
@@ -518,7 +532,7 @@ function countDescendants(node: BaseNode): number {
 }
 
 // Process node and update progress
-async function processNode(node: SceneNode, processed: number, total: number) {
+async function processNode(node: SceneNode, processed: number, total: number, fontChoice: FontName) {
   processed++;
 
   // Update progress every 10 nodes to reduce UI updates
@@ -532,13 +546,13 @@ async function processNode(node: SceneNode, processed: number, total: number) {
 
   // Start the conversion process
   const progress = { current: processed, total: total };
-  await convertToWireframe(node, progress);
+  await convertToWireframe(node, progress, fontChoice);
 
   // Process children if any
   if ('children' in node) {
     for (const child of (node as ChildrenMixin).children) {
       if ('id' in child) { // Ensure it's a SceneNode
-        await processNode(child as SceneNode, processed, total);
+        await processNode(child as SceneNode, processed, total, fontChoice);
       }
     }
   }

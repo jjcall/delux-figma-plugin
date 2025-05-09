@@ -10,7 +10,8 @@ interface ProgressState {
 const App = () => {
   const [isConverting, setIsConverting] = useState(false);
   const [progress, setProgress] = useState<ProgressState>({ current: 0, total: 0 });
-  const [selectedFont, setSelectedFont] = useState('figma-hand');
+  const [selectedFont, setSelectedFont] = useState('handwritten');
+  const [selectedTheme, setSelectedTheme] = useState('mono');
 
   useEffect(() => {
     // Listen for messages from the plugin
@@ -27,18 +28,26 @@ const App = () => {
 
   const handleConvert = () => {
     setIsConverting(true);
-    parent.postMessage({ pluginMessage: { type: 'convert' } }, '*');
+    parent.postMessage({
+      pluginMessage: {
+        type: 'convert',
+        fontChoice: selectedFont,
+        themeChoice: selectedTheme
+      }
+    }, '*');
   };
 
   const handleFontChange = (e: h.JSX.TargetedEvent<HTMLSelectElement, Event>) => {
     setSelectedFont(e.currentTarget.value);
   };
 
+  const handleThemeChange = (e: h.JSX.TargetedEvent<HTMLSelectElement, Event>) => {
+    setSelectedTheme(e.currentTarget.value);
+  };
+
   return (
     <div className="container">
-
       <div className="main-container">
-
         <div className="form-section">
           <div className="section-heading">Style</div>
           <label className="form-label">Font</label>
@@ -47,9 +56,20 @@ const App = () => {
             value={selectedFont}
             onChange={handleFontChange}
           >
-            <option value="figma-hand">Figma Hand</option>
+            <option value="handwritten">Handwritten</option>
             <option value="sans-serif">Sans-serif</option>
             <option value="serif">Serif</option>
+          </select>
+
+          <label className="form-label theme-label">Theme</label>
+          <select
+            className="font-select"
+            value={selectedTheme}
+            onChange={handleThemeChange}
+          >
+            <option value="mono">Mono</option>
+            <option value="blueprint">Blueprint</option>
+            <option value="dark-mode">Dark Mode</option>
           </select>
         </div>
 
