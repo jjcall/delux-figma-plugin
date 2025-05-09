@@ -11,7 +11,8 @@ Turn your meticulously crafted masterpieces into bare-bones wireframes with one 
   - Containers keep their structure
   - Navigation elements don't lose their way
 - **Consistent Vibes**:
-  - Clean, monochrome magic
+  - Multiple theme options (Mono, Blueprint, Dark Mode)
+  - Font selection (Handwritten, Sans-serif, Serif)
   - Borders that behave
   - Spacing that makes sense
   - Smart fill handling (because transparency is important!)
@@ -24,8 +25,21 @@ Turn your meticulously crafted masterpieces into bare-bones wireframes with one 
 
 1. Pick the frame you want to de-luxe
 2. Right-click > Plugins > De-Lux
-3. Hit "Convert to Wireframe"
-4. Watch the magic happen! Your wireframe appears right next to the original
+3. Choose your preferred font and theme style
+4. Hit "Convert to Wireframe"
+5. Watch the magic happen! Your wireframe appears right next to the original
+
+### 🎨 Theme Options
+
+- **Mono**: Classic grayscale wireframe style
+- **Blueprint**: Traditional blue engineering blueprint aesthetic
+- **Dark Mode**: Inverted dark theme for late-night design sessions
+
+### 🔤 Font Options
+
+- **Handwritten**: Figma Hand for that sketchy, whiteboard feel
+- **Sans-serif**: Clean Helvetica for a modern look
+- **Serif**: Times New Roman for a traditional wireframe style
 
 ## 🛠 Development Setup
 
@@ -70,6 +84,8 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 🗺 The Future is Bright
 
-- [ ] Custom style presets
+- [x] Multiple theme options
+- [x] Font selection
 - [ ] Batch processing
-- [ ] Fidelity granualarity
+- [ ] Fidelity granularity
+- [ ] Custom style presets

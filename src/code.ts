@@ -1,6 +1,7 @@
 interface Message {
   type: 'convert-to-wireframe' | 'help' | 'convert' | 'close';
   fontChoice?: 'handwritten' | 'sans-serif' | 'serif';
+  themeChoice?: 'mono' | 'blueprint' | 'dark-mode';
 }
 
 figma.showUI(__html__, {
@@ -9,25 +10,73 @@ figma.showUI(__html__, {
   height: 370,
 });
 
-// Core wireframe styles
-const WireframeStyles = {
-  colors: {
-    content: { r: 0.2, g: 0.2, b: 0.2 },     // Dark gray for text and icons
-    contentLight: { r: 0.95, g: 0.95, b: 0.95 }, // Light gray for text on dark backgrounds
-    fill: { r: 0.9, g: 0.9, b: 0.9 },        // Light gray for fills
-    fillInverted: { r: 0.25, g: 0.25, b: 0.25 }, // Dark gray for dark backgrounds
-    stroke: { r: 0.6, g: 0.6, b: 0.6 },      // Medium gray for borders
-    background: { r: 1, g: 1, b: 1 }         // White for backgrounds
+// Theme definitions
+type ThemeColors = {
+  content: RGB;
+  contentLight: RGB;
+  fill: RGB;
+  fillInverted: RGB;
+  stroke: RGB;
+  background: RGB;
+}
+
+// Define the different color themes
+const themes = {
+  'mono': {
+    content: { r: 0.2, g: 0.2, b: 0.2 },           // Dark gray (#333333) for text and icons
+    contentLight: { r: 0.95, g: 0.95, b: 0.95 },   // Light gray (#F2F2F2) for text on dark backgrounds
+    fill: { r: 0.9, g: 0.9, b: 0.9 },              // Light gray (#E6E6E6) for fills
+    fillInverted: { r: 0.25, g: 0.25, b: 0.25 },   // Dark gray (#404040) for dark backgrounds
+    stroke: { r: 0.6, g: 0.6, b: 0.6 },            // Medium gray (#999999) for borders
+    background: { r: 1, g: 1, b: 1 }               // White (#FFFFFF) for backgrounds
   },
+  'blueprint': {
+    content: { r: 1, g: 1, b: 1 },                 // White (#FFFFFF) for text and icons
+    contentLight: { r: 0.81, g: 0.85, b: 0.97 },   // Light blue/lavender (#CED8F7) for text on dark backgrounds
+    fill: { r: 0.29, g: 0.43, b: 0.9 },            // Medium-bright blue (#4A6DE5) for fills
+    fillInverted: { r: 0, g: 0.13, b: 0.51 },      // Deep navy blue (#002082) for dark backgrounds
+    stroke: { r: 0.81, g: 0.85, b: 0.97 },         // Light blue/lavender (#CED8F7) for borders
+    background: { r: 0.19, g: 0.34, b: 0.88 }      // Medium-dark blue (#3057E1) for backgrounds
+  },
+  'dark-mode': {
+    content: { r: 0.9, g: 0.9, b: 0.9 },           // Light gray (#E6E6E6) for text and icons
+    contentLight: { r: 0.2, g: 0.2, b: 0.2 },      // Dark gray (#333333) for text on light backgrounds
+    fill: { r: 0.24, g: 0.24, b: 0.24 },           // Medium-dark gray (#3D3D3D) for fills
+    fillInverted: { r: 0.75, g: 0.75, b: 0.75 },   // Light gray (#BFBFBF) for light backgrounds
+    stroke: { r: 0.4, g: 0.4, b: 0.4 },            // Medium gray (#666666) for borders
+    background: { r: 0.1, g: 0.1, b: 0.1 }         // Almost black (#1A1A1A) for backgrounds
+  }
+} as const;
+
+type ThemeOption = keyof typeof themes;
+
+// Core wireframe styles structure
+type WireframeStylesType = {
+  colors: ThemeColors;
   strokes: {
-    default: 1,
-    border: 0.5
-  },
+    default: number;
+    border: number;
+  };
   text: {
-    font: { family: "Figma Hand", style: "Regular" }
-  },
-  radius: 4  // Default border radius for non-ellipse elements
-};
+    font: FontName;
+  };
+  radius: number;
+}
+
+// Function to get wireframe styles for a specific theme
+function getWireframeStyles(themeChoice: ThemeOption, fontChoice: FontName): WireframeStylesType {
+  return {
+    colors: themes[themeChoice],
+    strokes: {
+      default: 1,
+      border: 0.5
+    },
+    text: {
+      font: fontChoice
+    },
+    radius: 4  // Default border radius for non-ellipse elements
+  };
+}
 
 // Font mapping
 const fontMapping = {
@@ -183,7 +232,11 @@ function hasDarkFill(node: SceneNode): boolean {
 }
 
 // Core conversion functions
-async function convertToWireframe(node: SceneNode, progress: { current: number, total: number }, fontChoice: FontName) {
+async function convertToWireframe(
+  node: SceneNode,
+  progress: { current: number, total: number },
+  wireframeStyles: WireframeStylesType
+) {
   try {
     // Update progress
     progress.current++;
@@ -195,16 +248,16 @@ async function convertToWireframe(node: SceneNode, progress: { current: number, 
 
     // Process based on node type
     if (isTextNode(node)) {
-      await convertText(node, fontChoice);
+      await convertText(node, wireframeStyles);
     }
     else if (isShapeNode(node)) {
-      convertShape(node);
+      convertShape(node, wireframeStyles);
     }
     else if (isVectorNode(node)) {
-      convertVector(node);
+      convertVector(node, wireframeStyles);
     }
     else if (hasChildren(node)) {
-      await convertContainer(node, progress, fontChoice);
+      await convertContainer(node, progress, wireframeStyles);
     }
 
   } catch (error) {
@@ -212,7 +265,7 @@ async function convertToWireframe(node: SceneNode, progress: { current: number, 
   }
 }
 
-async function convertText(node: TextNode, fontChoice: FontName) {
+async function convertText(node: TextNode, wireframeStyles: WireframeStylesType) {
   // Save original properties we want to preserve
   const originalSize = node.fontSize;
   const originalWidth = node.width;
@@ -225,14 +278,14 @@ async function convertText(node: TextNode, fontChoice: FontName) {
   const parentIsDark = node.parent && 'fills' in node.parent && hasDarkFill(node.parent);
 
   // Load and apply font
-  await figma.loadFontAsync(fontChoice);
-  node.fontName = fontChoice;
+  await figma.loadFontAsync(wireframeStyles.text.font);
+  node.fontName = wireframeStyles.text.font;
 
   // Apply wireframe styles while preserving key properties
   // Use light text color if parent is dark, otherwise use dark text color
   node.fills = [{
     type: 'SOLID',
-    color: parentIsDark ? WireframeStyles.colors.contentLight : WireframeStyles.colors.content
+    color: parentIsDark ? wireframeStyles.colors.contentLight : wireframeStyles.colors.content
   }];
 
   // Restore original properties
@@ -258,7 +311,7 @@ async function convertText(node: TextNode, fontChoice: FontName) {
   }
 }
 
-function convertShape(node: RectangleNode | EllipseNode | PolygonNode) {
+function convertShape(node: RectangleNode | EllipseNode | PolygonNode, wireframeStyles: WireframeStylesType) {
   // Preserve original position and dimensions
   const originalX = node.x;
   const originalY = node.y;
@@ -278,15 +331,15 @@ function convertShape(node: RectangleNode | EllipseNode | PolygonNode) {
     }
     // If it has visible fills but they're all white, keep it white
     else if (!hasNonWhiteFills(node)) {
-      node.fills = [{ type: 'SOLID', color: WireframeStyles.colors.background }];
+      node.fills = [{ type: 'SOLID', color: wireframeStyles.colors.background }];
     }
     // If it has dark fills originally, keep it dark in wireframe
     else if (isDark) {
-      node.fills = [{ type: 'SOLID', color: WireframeStyles.colors.fillInverted }];
+      node.fills = [{ type: 'SOLID', color: wireframeStyles.colors.fillInverted }];
     }
     // Otherwise, use the standard light fill for wireframe
     else {
-      node.fills = [{ type: 'SOLID', color: WireframeStyles.colors.fill }];
+      node.fills = [{ type: 'SOLID', color: wireframeStyles.colors.fill }];
     }
   }
 
@@ -298,7 +351,7 @@ function convertShape(node: RectangleNode | EllipseNode | PolygonNode) {
 
     // Only apply strokes if they existed in the original
     if (hasStrokes) {
-      node.strokes = [{ type: 'SOLID', color: WireframeStyles.colors.stroke }];
+      node.strokes = [{ type: 'SOLID', color: wireframeStyles.colors.stroke }];
       node.strokeAlign = strokeAlign;
       node.strokeWeight = strokeWeight;
     } else {
@@ -308,7 +361,7 @@ function convertShape(node: RectangleNode | EllipseNode | PolygonNode) {
 
   // Apply border radius to non-ellipse elements
   if (node.type !== 'ELLIPSE' && 'cornerRadius' in node) {
-    node.cornerRadius = WireframeStyles.radius;
+    node.cornerRadius = wireframeStyles.radius;
   }
 
   // Restore position and dimensions
@@ -317,7 +370,7 @@ function convertShape(node: RectangleNode | EllipseNode | PolygonNode) {
   node.resize(originalWidth, originalHeight);
 }
 
-function convertVector(node: VectorNode) {
+function convertVector(node: VectorNode, wireframeStyles: WireframeStylesType) {
   if ('fills' in node) {
     const fills = node.fills as Paint[];
     // Determine if this is a dark element
@@ -339,20 +392,20 @@ function convertVector(node: VectorNode) {
       // Use light content color if parent is dark
       node.fills = [{
         type: 'SOLID',
-        color: parentIsDark ? WireframeStyles.colors.contentLight : WireframeStyles.colors.content
+        color: parentIsDark ? wireframeStyles.colors.contentLight : wireframeStyles.colors.content
       }];
     }
     // For other vectors, preserve white fills
     else if (!hasNonWhiteFills(node)) {
-      node.fills = [{ type: 'SOLID', color: WireframeStyles.colors.background }];
+      node.fills = [{ type: 'SOLID', color: wireframeStyles.colors.background }];
     }
     // For vectors with dark fills, keep them dark
     else if (isDark) {
-      node.fills = [{ type: 'SOLID', color: WireframeStyles.colors.fillInverted }];
+      node.fills = [{ type: 'SOLID', color: wireframeStyles.colors.fillInverted }];
     }
     // For all other cases, use content color
     else {
-      node.fills = [{ type: 'SOLID', color: WireframeStyles.colors.content }];
+      node.fills = [{ type: 'SOLID', color: wireframeStyles.colors.content }];
     }
   }
 
@@ -362,7 +415,11 @@ function convertVector(node: VectorNode) {
   }
 }
 
-async function convertContainer(node: FrameNode | ComponentNode | InstanceNode, progress: { current: number, total: number }, fontChoice: FontName) {
+async function convertContainer(
+  node: FrameNode | ComponentNode | InstanceNode,
+  progress: { current: number, total: number },
+  wireframeStyles: WireframeStylesType
+) {
   // Determine if this is a dark container
   const isDark = 'backgrounds' in node ?
     (getMostVisibleFill(node.backgrounds as Paint[]) ?
@@ -383,15 +440,15 @@ async function convertContainer(node: FrameNode | ComponentNode | InstanceNode, 
     }
     // If it has visible backgrounds but they're all white, keep it white
     else if (!hasNonWhiteFills(node)) {
-      node.backgrounds = [{ type: 'SOLID', color: WireframeStyles.colors.background }];
+      node.backgrounds = [{ type: 'SOLID', color: wireframeStyles.colors.background }];
     }
     // If it has dark backgrounds originally, keep it dark in wireframe
     else if (isDark) {
-      node.backgrounds = [{ type: 'SOLID', color: WireframeStyles.colors.fillInverted }];
+      node.backgrounds = [{ type: 'SOLID', color: wireframeStyles.colors.fillInverted }];
     }
     // If it has any visible non-white backgrounds, convert to wireframe fill
     else {
-      node.backgrounds = [{ type: 'SOLID', color: WireframeStyles.colors.fill }];
+      node.backgrounds = [{ type: 'SOLID', color: wireframeStyles.colors.fill }];
     }
   }
 
@@ -407,7 +464,7 @@ async function convertContainer(node: FrameNode | ComponentNode | InstanceNode, 
 
     // Only apply strokes if they existed in the original
     if (hasStrokes) {
-      node.strokes = [{ type: 'SOLID', color: WireframeStyles.colors.stroke }];
+      node.strokes = [{ type: 'SOLID', color: wireframeStyles.colors.stroke }];
       node.strokeAlign = strokeAlign;
       node.strokeTopWeight = strokeTop;
       node.strokeRightWeight = strokeRight;
@@ -420,7 +477,7 @@ async function convertContainer(node: FrameNode | ComponentNode | InstanceNode, 
 
   // Process all children
   for (const child of node.children) {
-    await convertToWireframe(child, progress, fontChoice);
+    await convertToWireframe(child, progress, wireframeStyles);
   }
 }
 
@@ -477,6 +534,12 @@ figma.ui.onmessage = async (msg: Message) => {
     const fontOption = msg.fontChoice || 'handwritten' as FontOption;
     const fontChoice = fontMapping[fontOption];
 
+    // Get selected theme from UI or use default
+    const themeOption = msg.themeChoice || 'mono' as ThemeOption;
+
+    // Create wireframe styles based on theme and font choices
+    const wireframeStyles = getWireframeStyles(themeOption, fontChoice);
+
     // Load the selected font
     await figma.loadFontAsync(fontChoice);
 
@@ -503,7 +566,7 @@ figma.ui.onmessage = async (msg: Message) => {
         clone.x = node.x + node.width + 100;
 
         // Begin the wireframe conversion process
-        await processNode(clone, processedNodes, totalNodes, fontChoice);
+        await processNode(clone, processedNodes, totalNodes, wireframeStyles);
 
         figma.currentPage.selection = [clone];
         figma.viewport.scrollAndZoomIntoView([clone]);
@@ -532,7 +595,12 @@ function countDescendants(node: BaseNode): number {
 }
 
 // Process node and update progress
-async function processNode(node: SceneNode, processed: number, total: number, fontChoice: FontName) {
+async function processNode(
+  node: SceneNode,
+  processed: number,
+  total: number,
+  wireframeStyles: WireframeStylesType
+) {
   processed++;
 
   // Update progress every 10 nodes to reduce UI updates
@@ -546,13 +614,13 @@ async function processNode(node: SceneNode, processed: number, total: number, fo
 
   // Start the conversion process
   const progress = { current: processed, total: total };
-  await convertToWireframe(node, progress, fontChoice);
+  await convertToWireframe(node, progress, wireframeStyles);
 
   // Process children if any
   if ('children' in node) {
     for (const child of (node as ChildrenMixin).children) {
       if ('id' in child) { // Ensure it's a SceneNode
-        await processNode(child as SceneNode, processed, total, fontChoice);
+        await processNode(child as SceneNode, processed, total, wireframeStyles);
       }
     }
   }
