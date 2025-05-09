@@ -10,6 +10,7 @@ interface ProgressState {
 const App = () => {
   const [isConverting, setIsConverting] = useState(false);
   const [progress, setProgress] = useState<ProgressState>({ current: 0, total: 0 });
+  const [selectedFont, setSelectedFont] = useState('figma-hand');
 
   useEffect(() => {
     // Listen for messages from the plugin
@@ -29,10 +30,29 @@ const App = () => {
     parent.postMessage({ pluginMessage: { type: 'convert' } }, '*');
   };
 
+  const handleFontChange = (e: h.JSX.TargetedEvent<HTMLSelectElement, Event>) => {
+    setSelectedFont(e.currentTarget.value);
+  };
+
   return (
     <div className="container">
 
       <div className="main-container">
+
+        <div className="form-section">
+          <div className="section-heading">Style</div>
+          <label className="form-label">Font</label>
+          <select
+            className="font-select"
+            value={selectedFont}
+            onChange={handleFontChange}
+          >
+            <option value="figma-hand">Figma Hand</option>
+            <option value="sans-serif">Sans-serif</option>
+            <option value="serif">Serif</option>
+          </select>
+        </div>
+
         <div className="info-banner">
           <div className="info-icon"></div>
           <div className="info-content">
