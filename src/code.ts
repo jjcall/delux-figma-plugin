@@ -2,6 +2,7 @@ interface Message {
   type: 'convert-to-wireframe' | 'help' | 'convert' | 'close';
   fontChoice?: 'handwritten' | 'sans-serif' | 'serif';
   themeChoice?: 'mono' | 'blueprint' | 'dark-mode';
+  useRoundedCorners?: boolean;
 }
 
 figma.showUI(__html__, {
@@ -24,9 +25,9 @@ type ThemeColors = {
 const themes = {
   'mono': {
     content: { r: 0.2, g: 0.2, b: 0.2 },           // Dark gray (#333333) for text and icons
-    contentLight: { r: 0.95, g: 0.95, b: 0.95 },   // Light gray (#F2F2F2) for text on dark backgrounds
-    fill: { r: 0.9, g: 0.9, b: 0.9 },              // Light gray (#E6E6E6) for fills
-    fillInverted: { r: 0.25, g: 0.25, b: 0.25 },   // Dark gray (#404040) for dark backgrounds
+    contentLight: { r: 0.95, g: 0.95, b: 0.95 },   // light gray (#f2f2f2) for text on dark backgrounds
+    fill: { r: 0.9, g: 0.9, b: 0.9 },              // light gray (#e6e6e6) for fills
+    fillInverted: { r: 0.25, g: 0.25, b: 0.25 },   // dark gray (#404040) for dark backgrounds
     stroke: { r: 0.6, g: 0.6, b: 0.6 },            // Medium gray (#999999) for borders
     background: { r: 1, g: 1, b: 1 }               // White (#FFFFFF) for backgrounds
   },
@@ -61,10 +62,11 @@ type WireframeStylesType = {
     font: FontName;
   };
   radius: number;
+  applyRadius: boolean;
 }
 
 // Function to get wireframe styles for a specific theme
-function getWireframeStyles(themeChoice: ThemeOption, fontChoice: FontName): WireframeStylesType {
+function getWireframeStyles(themeChoice: ThemeOption, fontChoice: FontName, useRoundedCorners: boolean): WireframeStylesType {
   return {
     colors: themes[themeChoice],
     strokes: {
@@ -74,7 +76,8 @@ function getWireframeStyles(themeChoice: ThemeOption, fontChoice: FontName): Wir
     text: {
       font: fontChoice
     },
-    radius: 4  // Default border radius for non-ellipse elements
+    radius: 8,  // Default border radius for non-ellipse elements
+    applyRadius: useRoundedCorners
   };
 }
 
@@ -379,6 +382,40 @@ function handleSpecialContainerCase(node: SceneNode, wireframeStyles: WireframeS
   return false;
 }
 
+// Apply border radius based on settings
+function applyCornerRadius(node: SceneNode, wireframeStyles: WireframeStylesType) {
+  // Only apply to elements that can have corner radius
+  if (node.type !== 'ELLIPSE' && 'cornerRadius' in node) {
+    if (wireframeStyles.applyRadius) {
+      // Apply the radius from wireframe styles based on node type
+      if (node.type === 'RECTANGLE') {
+        node.topLeftRadius = wireframeStyles.radius;
+        node.topRightRadius = wireframeStyles.radius;
+        node.bottomLeftRadius = wireframeStyles.radius;
+        node.bottomRightRadius = wireframeStyles.radius;
+      } else if (node.type === 'FRAME' || node.type === 'COMPONENT' || node.type === 'INSTANCE') {
+        node.topLeftRadius = wireframeStyles.radius;
+        node.topRightRadius = wireframeStyles.radius;
+        node.bottomLeftRadius = wireframeStyles.radius;
+        node.bottomRightRadius = wireframeStyles.radius;
+      }
+    } else {
+      // If rounded corners are disabled, set to 0 for a sharp look
+      if (node.type === 'RECTANGLE') {
+        node.topLeftRadius = 0;
+        node.topRightRadius = 0;
+        node.bottomLeftRadius = 0;
+        node.bottomRightRadius = 0;
+      } else if (node.type === 'FRAME' || node.type === 'COMPONENT' || node.type === 'INSTANCE') {
+        node.topLeftRadius = 0;
+        node.topRightRadius = 0;
+        node.bottomLeftRadius = 0;
+        node.bottomRightRadius = 0;
+      }
+    }
+  }
+}
+
 // Core conversion functions
 async function convertToWireframe(
   node: SceneNode,
@@ -514,10 +551,8 @@ function convertShape(node: RectangleNode | EllipseNode | PolygonNode, wireframe
     }
   }
 
-  // Apply border radius to non-ellipse elements
-  if (node.type !== 'ELLIPSE' && 'cornerRadius' in node) {
-    node.cornerRadius = wireframeStyles.radius;
-  }
+  // Apply corner radius based on settings
+  applyCornerRadius(node, wireframeStyles);
 
   // Restore position and dimensions
   node.x = originalX;
@@ -633,6 +668,9 @@ async function convertContainer(
     }
   }
 
+  // Apply corner radius to frames and components if needed
+  applyCornerRadius(node, wireframeStyles);
+
   // Process all children
   for (const child of node.children) {
     await convertToWireframe(child, progress, wireframeStyles);
@@ -695,8 +733,11 @@ figma.ui.onmessage = async (msg: Message) => {
     // Get selected theme from UI or use default
     const themeOption = msg.themeChoice || 'mono' as ThemeOption;
 
+    // Get rounded corners setting (default to true if not specified)
+    const useRoundedCorners = msg.useRoundedCorners !== undefined ? msg.useRoundedCorners : true;
+
     // Create wireframe styles based on theme and font choices
-    const wireframeStyles = getWireframeStyles(themeOption, fontChoice);
+    const wireframeStyles = getWireframeStyles(themeOption, fontChoice, useRoundedCorners);
 
     // Load the selected font
     await figma.loadFontAsync(fontChoice);

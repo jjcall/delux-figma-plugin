@@ -12,6 +12,7 @@ const App = () => {
   const [progress, setProgress] = useState<ProgressState>({ current: 0, total: 0 });
   const [selectedFont, setSelectedFont] = useState('handwritten');
   const [selectedTheme, setSelectedTheme] = useState('mono');
+  const [useRoundedCorners, setUseRoundedCorners] = useState(true);
 
   useEffect(() => {
     // Listen for messages from the plugin
@@ -32,7 +33,8 @@ const App = () => {
       pluginMessage: {
         type: 'convert',
         fontChoice: selectedFont,
-        themeChoice: selectedTheme
+        themeChoice: selectedTheme,
+        useRoundedCorners: useRoundedCorners
       }
     }, '*');
   };
@@ -43,6 +45,10 @@ const App = () => {
 
   const handleThemeChange = (e: h.JSX.TargetedEvent<HTMLSelectElement, Event>) => {
     setSelectedTheme(e.currentTarget.value);
+  };
+
+  const handleRoundedCornersChange = (e: h.JSX.TargetedEvent<HTMLInputElement, Event>) => {
+    setUseRoundedCorners(e.currentTarget.checked);
   };
 
   return (
@@ -71,6 +77,18 @@ const App = () => {
             <option value="blueprint">Blueprint</option>
             <option value="dark-mode">Dark Mode</option>
           </select>
+
+          <div className="checkbox-container">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={useRoundedCorners}
+                onChange={handleRoundedCornersChange}
+                className="rounded-checkbox"
+              />
+              <span>Use Rounded Corners</span>
+            </label>
+          </div>
         </div>
 
         <div className="info-banner">
