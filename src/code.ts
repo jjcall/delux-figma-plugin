@@ -191,11 +191,22 @@ function getLuminance(color: RGB): number {
   return 0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b;
 }
 
-// Determine if a fill is dark (by calculating its luminance)
-function isDarkFill(fill: Paint): boolean {
+// Get theme-specific luminance threshold
+function getLuminanceThreshold(themeOption: ThemeOption): number {
+  // Theme-specific thresholds
+  const thresholds = {
+    'mono': 0.5,        // Standard midpoint works well for grayscale
+    'blueprint': 0.35,  // Blues need lower threshold as they're perceived as darker
+    'dark-mode': 0.45   // Adjusted for dark mode's specific color palette
+  };
+  return thresholds[themeOption];
+}
+
+// Determine if a fill is dark based on theme-specific thresholds
+function isDarkFill(fill: Paint, themeOption: ThemeOption): boolean {
   if (fill.type === 'SOLID') {
     const luminance = getLuminance(fill.color);
-    return luminance < 0.5; // 0.5 is the midpoint between black (0) and white (1)
+    return luminance < getLuminanceThreshold(themeOption);
   }
   return false;
 }
@@ -222,12 +233,149 @@ function getMostVisibleFill(fills: Paint[]): Paint | null {
   return visibleFills[visibleFills.length - 1];
 }
 
-// Helper function to check if node has dark fill
-function hasDarkFill(node: SceneNode): boolean {
+// Enhanced function to check if node has dark fill - now theme-aware
+function hasDarkFill(node: SceneNode, wireframeStyles: WireframeStylesType): boolean {
   if ('fills' in node && node.fills) {
     const mainFill = getMostVisibleFill(node.fills as Paint[]);
-    return mainFill ? isDarkFill(mainFill) : false;
+    const themeOption = getThemeFromStyles(wireframeStyles);
+    return mainFill ? isDarkFill(mainFill, themeOption) : false;
   }
+
+  // Special case for blueprint theme and certain parent types
+  if (isTheme(wireframeStyles, 'blueprint') &&
+      node.parent &&
+      isShapeWithFill(node.parent) &&
+      hasFillColor(node.parent, wireframeStyles.colors.fill)) {
+    return true;  // Blueprint fill color should always be treated as dark
+  }
+
+  return false;
+}
+
+// Helper to get theme option from wireframe styles
+function getThemeFromStyles(wireframeStyles: WireframeStylesType): ThemeOption {
+  // Compare colors to determine which theme this is
+  const colors = wireframeStyles.colors;
+
+  // Check for blueprint theme's distinctive colors
+  if (Math.abs(colors.fill.r - 0.29) < 0.01 &&
+      Math.abs(colors.fill.g - 0.43) < 0.01 &&
+      Math.abs(colors.fill.b - 0.9) < 0.01) {
+    return 'blueprint';
+  }
+
+  // Check for dark mode's distinctive colors
+  if (Math.abs(colors.background.r - 0.1) < 0.01 &&
+      Math.abs(colors.background.g - 0.1) < 0.01 &&
+      Math.abs(colors.background.b - 0.1) < 0.01) {
+    return 'dark-mode';
+  }
+
+  // Default to mono
+  return 'mono';
+}
+
+// Helper to check if a specific theme is being used
+function isTheme(wireframeStyles: WireframeStylesType, themeOption: ThemeOption): boolean {
+  return getThemeFromStyles(wireframeStyles) === themeOption;
+}
+
+// Helper to check if a node is a shape with fills
+function isShapeWithFill(node: BaseNode): boolean {
+  return 'fills' in node && Array.isArray((node as any).fills) && (node as any).fills.length > 0;
+}
+
+// Helper to check if a node has a specific fill color
+function hasFillColor(node: BaseNode, color: RGB): boolean {
+  if (!('fills' in node)) return false;
+
+  const fills = (node as any).fills as Paint[] | undefined;
+  if (!fills) return false;
+
+  return fills.some(fill => {
+    if (fill.type !== 'SOLID') return false;
+    return Math.abs(fill.color.r - color.r) < 0.01 &&
+           Math.abs(fill.color.g - color.g) < 0.01 &&
+           Math.abs(fill.color.b - color.b) < 0.01;
+  });
+}
+
+// Enhanced contrast detection for elements relative to their parent or context
+function getContrastColor(node: SceneNode, wireframeStyles: WireframeStylesType): RGB {
+  const themeType = getThemeFromStyles(wireframeStyles);
+
+  // Special handling for text nodes
+  if (isTextNode(node)) {
+    // For Dark mode, we need to check specific parent fill colors
+    if (themeType === 'dark-mode' && node.parent && isShapeWithFill(node.parent)) {
+      // If parent has the fillInverted color (light backgrounds in dark mode)
+      // or background color in dark mode, use dark text
+      if (hasFillColor(node.parent, wireframeStyles.colors.fillInverted) ||
+          hasFillColor(node.parent, wireframeStyles.colors.background)) {
+        return wireframeStyles.colors.contentLight; // Actually dark text in dark mode
+      }
+    }
+
+    // Check direct parent fill
+    if (node.parent && isShapeWithFill(node.parent)) {
+      const parentNode = node.parent as SceneNode;
+      const parentIsDark = hasDarkFill(parentNode, wireframeStyles);
+      if (parentIsDark) {
+        return wireframeStyles.colors.contentLight;
+      } else if (themeType === 'dark-mode') {
+        // For dark mode, use darker text on any non-dark background
+        return wireframeStyles.colors.contentLight;
+      }
+    }
+  }
+
+  // Special handling for boxes inside containers (bottom left square issue)
+  if (node.type === 'RECTANGLE' || node.type === 'FRAME') {
+    // Handle bottom left square special case - check if it's in a dark container
+    if (node.parent &&
+        (node.parent.type === 'FRAME' || node.parent.type === 'RECTANGLE') &&
+        isShapeWithFill(node.parent)) {
+
+      const parentNode = node.parent as SceneNode;
+
+      // Check if parent has the specific fill color that should contrast with the child
+      if ((themeType === 'blueprint' && hasFillColor(parentNode, wireframeStyles.colors.fillInverted)) ||
+          (themeType === 'dark-mode' && hasFillColor(parentNode, wireframeStyles.colors.fill))) {
+        // This is the bottom left square case - use inverted colors
+        return wireframeStyles.colors.contentLight;
+      }
+    }
+  }
+
+  // Blueprint theme - treat filled containers as requiring light content
+  if (themeType === 'blueprint' &&
+      node.parent &&
+      hasFillColor(node.parent, wireframeStyles.colors.fill)) {
+    return wireframeStyles.colors.contentLight;
+  }
+
+  // Default to regular content color
+  return wireframeStyles.colors.content;
+}
+
+// Special case for handling the bottom left square issue
+function handleSpecialContainerCase(node: SceneNode, wireframeStyles: WireframeStylesType): boolean {
+  const themeType = getThemeFromStyles(wireframeStyles);
+
+  // Check if this is one of our special container cases
+  if ((node.type === 'RECTANGLE' || node.type === 'FRAME') &&
+      node.parent &&
+      (node.parent.type === 'FRAME' || node.parent.type === 'RECTANGLE')) {
+
+    const parentNode = node.parent as SceneNode;
+
+    // Special case for the bottom left square issue
+    if ((themeType === 'blueprint' && hasFillColor(parentNode, wireframeStyles.colors.fillInverted)) ||
+        (themeType === 'dark-mode' && hasFillColor(parentNode, wireframeStyles.colors.fill))) {
+      return true;
+    }
+  }
+
   return false;
 }
 
@@ -274,18 +422,17 @@ async function convertText(node: TextNode, wireframeStyles: WireframeStylesType)
   const originalTextAutoResize = node.textAutoResize;
   const originalHeight = node.height;
 
-  // Check if the parent has a dark fill - this would indicate light text on dark background
-  const parentIsDark = node.parent && 'fills' in node.parent && hasDarkFill(node.parent);
+  // Get appropriate text color based on context
+  const textColor = getContrastColor(node, wireframeStyles);
 
   // Load and apply font
   await figma.loadFontAsync(wireframeStyles.text.font);
   node.fontName = wireframeStyles.text.font;
 
   // Apply wireframe styles while preserving key properties
-  // Use light text color if parent is dark, otherwise use dark text color
   node.fills = [{
     type: 'SOLID',
-    color: parentIsDark ? wireframeStyles.colors.contentLight : wireframeStyles.colors.content
+    color: textColor
   }];
 
   // Restore original properties
@@ -319,7 +466,10 @@ function convertShape(node: RectangleNode | EllipseNode | PolygonNode, wireframe
   const originalHeight = node.height;
 
   // Determine if this is a dark element
-  const isDark = hasDarkFill(node);
+  const isDark = hasDarkFill(node, wireframeStyles);
+
+  // Check for special container case
+  const isSpecialCase = handleSpecialContainerCase(node, wireframeStyles);
 
   // Apply wireframe styles
   if ('fills' in node) {
@@ -328,6 +478,11 @@ function convertShape(node: RectangleNode | EllipseNode | PolygonNode, wireframe
     // If all fills are hidden or there are no fills, keep it transparent
     if (!hasVisibleFills(fills)) {
       node.fills = [];
+    }
+    // Special case for bottom left square
+    else if (isSpecialCase) {
+      // Use light fill for better contrast with dark parent
+      node.fills = [{ type: 'SOLID', color: wireframeStyles.colors.contentLight }];
     }
     // If it has visible fills but they're all white, keep it white
     else if (!hasNonWhiteFills(node)) {
@@ -373,26 +528,25 @@ function convertShape(node: RectangleNode | EllipseNode | PolygonNode, wireframe
 function convertVector(node: VectorNode, wireframeStyles: WireframeStylesType) {
   if ('fills' in node) {
     const fills = node.fills as Paint[];
-    // Determine if this is a dark element
-    const isDark = hasDarkFill(node);
 
-    // Determine if the parent has a dark fill
-    const parentIsDark = node.parent && 'fills' in node.parent && hasDarkFill(node.parent);
+    // Determine if this is a dark element
+    const isDark = hasDarkFill(node, wireframeStyles);
 
     // If all fills are hidden or there are no fills, keep it transparent
     if (!hasVisibleFills(fills)) {
       node.fills = [];
     }
-    // If it's part of a button or icon, use appropriate content color
+    // If it's part of a button or icon, use appropriate content color based on context
     else if (node.parent && (
       node.parent.name.toLowerCase().includes('button') ||
       node.parent.name.toLowerCase().includes('icon') ||
       node.name.toLowerCase().includes('icon')
     )) {
-      // Use light content color if parent is dark
+      // Get appropriate color based on context
+      const vectorColor = getContrastColor(node, wireframeStyles);
       node.fills = [{
         type: 'SOLID',
-        color: parentIsDark ? wireframeStyles.colors.contentLight : wireframeStyles.colors.content
+        color: vectorColor
       }];
     }
     // For other vectors, preserve white fills
@@ -420,11 +574,15 @@ async function convertContainer(
   progress: { current: number, total: number },
   wireframeStyles: WireframeStylesType
 ) {
+  // Get theme information
+  const themeOption = getThemeFromStyles(wireframeStyles);
+
   // Determine if this is a dark container
-  const isDark = 'backgrounds' in node ?
-    (getMostVisibleFill(node.backgrounds as Paint[]) ?
-      isDarkFill(getMostVisibleFill(node.backgrounds as Paint[])!) : false) :
-    false;
+  let isDark = false;
+  if ('backgrounds' in node) {
+    const mainFill = getMostVisibleFill(node.backgrounds as Paint[]);
+    isDark = mainFill ? isDarkFill(mainFill, themeOption) : false;
+  }
 
   // Handle container-specific properties
   if ('backgrounds' in node) {
